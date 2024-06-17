@@ -1,24 +1,28 @@
 using CRUD_application_2.Models;
 using System;
 using System.Linq;
+using System.Net;
 using System.Web.Mvc;
 
 namespace CRUD_application_2.Controllers
 {
+
     public class UserController : Controller
     {
         public static System.Collections.Generic.List<User> userlist = new System.Collections.Generic.List<User>();
 
         // GET: User
+        // Return the list of users.
         public ActionResult Index()
         {
             return View(userlist);
         }
 
         // GET: User/Details/5
+        // Return the details of a specific user with the provided id.
         public ActionResult Details(int id)
         {
-            var user = userlist.FirstOrDefault(u => u.Id == id);
+            User user = userlist.FirstOrDefault(u => u.Id == id);
             if (user == null)
             {
                 return HttpNotFound();
@@ -33,27 +37,28 @@ namespace CRUD_application_2.Controllers
         }
 
         // POST: User/Create
+        // Create a new user with the data from the user provided and return it
         [HttpPost]
         public ActionResult Create(User user)
         {
-            try
+            // Generate a new id for the user
+            int newId = userlist.Count > 0 ? userlist.Max(u => u.Id) + 1 : 1;
+
+            // Assign the new id to the user
+            user.Id = newId;
+            if (string.IsNullOrEmpty(user.Name) || string.IsNullOrEmpty(user.Email))
             {
-                // Assuming User class has an Id property that is auto-incremented.
-                // This is a simple way to simulate auto-increment behavior.
-                user.Id = userlist.Any() ? userlist.Max(u => u.Id) + 1 : 1;
-                userlist.Add(user);
-                return RedirectToAction("Index");
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "User must have all fields defined.");
             }
-            catch
-            {
-                return View();
-            }
+
+            userlist.Add(user);
+            return RedirectToAction("Index");
         }
 
         // GET: User/Edit/5
         public ActionResult Edit(int id)
         {
-            var user = userlist.FirstOrDefault(u => u.Id == id);
+            User user = userlist.FirstOrDefault(u => u.Id == id);
             if (user == null)
             {
                 return HttpNotFound();
@@ -65,30 +70,21 @@ namespace CRUD_application_2.Controllers
         [HttpPost]
         public ActionResult Edit(int id, User user)
         {
-            try
+            User existingUser = userlist.FirstOrDefault(u => u.Id == id);
+            if (existingUser == null)
             {
-                var userToUpdate = userlist.FirstOrDefault(u => u.Id == id);
-                if (userToUpdate == null)
-                {
-                    return HttpNotFound();
-                }
-                // Update properties here
-                userToUpdate.Name = user.Name;
-                userToUpdate.Email = user.Email;
-                // Add other properties as needed
-
-                return RedirectToAction("Index");
+                return HttpNotFound();
             }
-            catch
-            {
-                return View(user);
-            }
+            existingUser.Name = user.Name;
+            existingUser.Email = user.Email;
+            return RedirectToAction("Index");
         }
 
         // GET: User/Delete/5
+        // Delete the user with the provided id
         public ActionResult Delete(int id)
         {
-            var user = userlist.FirstOrDefault(u => u.Id == id);
+            User user = userlist.FirstOrDefault(u => u.Id == id);
             if (user == null)
             {
                 return HttpNotFound();
@@ -100,36 +96,27 @@ namespace CRUD_application_2.Controllers
         [HttpPost]
         public ActionResult Delete(int id, FormCollection collection)
         {
-            try
+            User user = userlist.FirstOrDefault(u => u.Id == id);
+            if (user == null)
             {
-                var user = userlist.FirstOrDefault(u => u.Id == id);
-                if (user != null)
-                {
-                    userlist.Remove(user);
-                }
-                return RedirectToAction("Index");
+                return HttpNotFound();
             }
-            catch
-            {
-                return View();
-            }
+            userlist.Remove(user);
+            return RedirectToAction("Index");
         }
 
         // GET: User/Search
-        public ActionResult Search(string searchTerm)
+        public ActionResult Search(string searchString)
         {
-            if (string.IsNullOrWhiteSpace(searchTerm))
+            var users = from u in userlist
+                        select u;
+
+            if (!String.IsNullOrEmpty(searchString))
             {
-                return View("Index", userlist);
+                users = users.Where(u => u.Name.Contains(searchString));
             }
 
-            var filteredUsers = userlist.Where(u =>
-            (!string.IsNullOrWhiteSpace(u.Name) && u.Name.ToLower().Contains(searchTerm.ToLower())) ||
-            (!string.IsNullOrWhiteSpace(u.Email) && u.Email.ToLower().Contains(searchTerm.ToLower()))
-            ).ToList();
-
-
-            return View("Index", filteredUsers);
+            return View("Index", users.ToList());
         }
 
     }
